@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<testsuites tests="25" name="Tap-Junit" failures="0">
+  <testsuite name="Tap-Junit-Suite" tests="25" skipped="0" failures="0">
+    <testcase name="--defaults: long version in 291ms" id="1"/>
+    <testcase name="--defaults: short version in 285ms" id="2"/>
+    <testcase name="--producer is not supported anymore in 531ms" id="3"/>
+    <testcase name="--audio: default file in 987ms" id="4"/>
+    <testcase name="--audio: file given by full version in 969ms" id="5"/>
+    <testcase name="--audio: file given by short version in 1002ms" id="6"/>
+    <testcase name="--audio: wrong file given by short version in 999ms" id="7"/>
+    <testcase name="--volume: 100% given by full version in 1032ms" id="8"/>
+    <testcase name="--volume: 50% given by long version in 1393ms" id="9"/>
+    <testcase name="--volume: 50% given by short version in 1535ms" id="10"/>
+    <testcase name="--volume: 20% given by short version in 1191ms" id="11"/>
+    <testcase name="--volume: -1% given by short version in 685ms" id="12"/>
+    <testcase name="--tap switch deprecated as tap-ogg produces TAP stream on STDOUT in 1009ms" id="13"/>
+    <testcase name="no config.yml file in CWD in 606ms" id="14"/>
+    <testcase name="config.yml file in CWD at start in 641ms" id="15"/>
+    <testcase name="config.yml file in CWD created while running in 684ms" id="16"/>
+    <testcase name="config.yml file in CWD modified while running in 1066ms" id="17"/>
+    <testcase name="config.yml file in CWD created and modified while running in 732ms" id="18"/>
+    <testcase name="config.yml file in CWD removed while running in 652ms" id="19"/>
+    <testcase name="effects.yml file given by --config CLI parameter created while running in 1027ms" id="20"/>
+    <testcase name="effects.yml file given by -c CLI parameter modified while running in 571ms" id="21"/>
+    <testcase name="execute from root project directory in 558ms" id="22"/>
+    <testcase name="execute from dist directory in silence mode in 560ms" id="23"/>
+    <testcase name="execute from dist directory in 556ms" id="24"/>
+    <testcase name="execute from test directory in 565ms" id="25"/>
+  </testsuite>
+</testsuites>

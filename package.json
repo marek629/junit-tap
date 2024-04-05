@@ -1,0 +1,35 @@
+{
+  "name": "junit-tap",
+  "type": "module",
+  "bin": "./dist/cli.js",
+  "engines": {
+    "node": ">= 14.18.3"
+  },
+  "version": "0.1.0",
+  "repository": "github:marek629/junit-tap",
+  "homepage": "https://github.com/marek629/junit-tap",
+  "keywords": [
+    "tap",
+    "junit",
+    "testing",
+    "test",
+    "anything",
+    "protocol"
+  ],
+  "packageManager": "yarn@4.1.1",
+  "devDependencies": {
+    "ava": "^6.1.2",
+    "dirname-filename-esm": "^1.1.1",
+    "esbuild": "^0.20.2"
+  },
+  "dependencies": {
+    "sax": "^1.3.0",
+    "supertap": "^3.0.1",
+    "yaml": "^2.4.1"
+  },
+  "scripts": {
+    "build": "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm && chmod +x dist/cli.js",
+    "test": "ava --tap",
+    "test:watch": "ava --watch"
+  }
+}

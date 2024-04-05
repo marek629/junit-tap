@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testsuite name="args" time="0.007258" disabled="0" errors="0" tests="2" failures="0" skipped="0" hostname="ideapad320-i5-80xl">
+		<testcase name="1 git repo and 1 no-git project" time="0.004677" classname="test"/>
+		<testcase name="3 git repos" time="0.001242" classname="test"/>
+	</testsuite>
+	<testsuite name="cliOptions" time="0.002031" disabled="0" errors="0" tests="12" failures="0" skipped="0" hostname="ideapad320-i5-80xl">
+		<testcase name="empty string on null given" time="0.001174" classname="test"/>
+		<testcase name="empty string on undefined given" time="0.001139" classname="test"/>
+		<testcase name="empty string on empty object given" time="0.001122" classname="test"/>
+		<testcase name="1 short switch enabled" time="0.001097" classname="test"/>
+		<testcase name="1 short switch disabled" time="0.001096" classname="test"/>
+		<testcase name="1 long switch enabled" time="0.001142" classname="test"/>
+		<testcase name="1 long switch disabled" time="0.001149" classname="test"/>
+		<testcase name="1 short parameter" time="0.001083" classname="test"/>
+		<testcase name="1 long parameter" time="0.000987" classname="test"/>
+		<testcase name="1 short switch enabled and 1 short parameter" time="0.000968" classname="test"/>
+		<testcase name="2 long and 1 short parameters" time="0.000953" classname="test"/>
+		<testcase name="3 long parameters" time="0.000937" classname="test"/>
+	</testsuite>
+	<!-- tests 14 -->
+	<!-- suites 2 -->
+	<!-- pass 14 -->
+	<!-- fail 0 -->
+	<!-- cancelled 0 -->
+	<!-- skipped 0 -->
+	<!-- todo 0 -->
+	<!-- duration_ms 755.12871 -->
+</testsuites>

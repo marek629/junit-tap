@@ -1,0 +1,12 @@
+<?xml version="1.0"?><testsuites tests="2" name="Tap-Junit" failures="1"><testsuite name="Tap-Junit-Suite" tests="2" skipped="0" failures="1"><testcase name="should produce TAP stream in legacy.java.xml" id="1"/><testcase name="should produce TAP stream in tap.junit.xml" id="2"><failure message="Expected &quot;# skipped 1&quot; in &quot;&quot;&quot;
+  TAP version 13
+  not ok 1 - test is equal in undefineds
+  not ok 2 - test skip extra # SKIP in undefineds
+  not ok 3 - should not be equal in undefineds
+  not ok 4 - should be equal in undefineds
+
+  1..4
+  # tests 4
+  # pass 3
+  # fail 1
+  &quot;&quot;&quot;" type="fail"/></testcase></testsuite></testsuites>
