@@ -1,2 +1,7 @@
 .editorconfig
 .gitattributes
+.pnp.cjs
+.pnp.loader.mjs
+.yarn/
+
+*.tgz

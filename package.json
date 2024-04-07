@@ -5,7 +5,7 @@
   "engines": {
     "node": ">= 14.18.3"
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": "github:marek629/junit-tap",
   "homepage": "https://github.com/marek629/junit-tap",
   "keywords": [
@@ -16,6 +16,7 @@
     "anything",
     "protocol"
   ],
+  "license": "MIT",
   "packageManager": "yarn@4.1.1",
   "devDependencies": {
     "ava": "^6.1.2",
