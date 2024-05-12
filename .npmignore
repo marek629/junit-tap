@@ -5,3 +5,8 @@
 .yarn/
 
 *.tgz
+
+coverage/
+dist/*.js.map
+src/
+test/

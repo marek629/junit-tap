@@ -5,6 +5,8 @@ import { pipeline } from 'stream/promises'
 
 import test from 'ava'
 import { dirname } from 'dirname-filename-esm'
+import { fake } from 'sinon'
+import { parse } from 'yaml'
 
 import Transform from '../src/transform.js'
 
@@ -29,18 +31,33 @@ class TestStream extends Writable {
   }
 }
 
-const tapStreamMactro = test.macro({
-  exec: async (t, file, ...records) => {
+const tapStreamMacro = test.macro({
+  exec: async (t, file, config, times, ...records) => {
     const input = createReadStream(join(dirname(import.meta), 'data'  , file))
-    const transform = new Transform()
+    const transform = new Transform(config)
     const output = new TestStream()
+    const precission = 1_000
 
     await pipeline(input, transform, output)
 
+    t.is(config.scheduler.wait.callCount, times.length)
+    for (let index = 0; index < times.length; index++) {
+      const call = config.scheduler.wait.getCall(index)
+      const ms = config.fast ? 0 : times[index]
+      t.is(
+        Math.round(call.firstArg * precission), Math.round(ms * precission),
+        `Transform should take ${ms} ms but took ${call.firstArg} ms.`,
+      )
+    }
     for (const str of records) t.truthy(output.find(str), `Expected "${str}" in """\n${output.toString()}"""`)
     t.snapshot(output.toString())
   },
-  title: (providedTitle = '', file) => `${providedTitle || 'should produce TAP stream'} from ${file} file`
+  title: (providedTitle = '', file, { fast }) => {
+    const fastOption = fast
+      ? 'fast'
+      : 'real time'
+    return `${providedTitle || 'should produce TAP stream'} from ${file} file, ${fastOption} option`
+  },
 })
 
 const selfGeneratedRecords = [
@@ -56,10 +73,11 @@ const selfGeneratedRecords = [
   '# fail 1',
 ]
 
-for (const data of [
+for (const [file, ms, ...data] of [
   // example from https://howtodoinjava.com/junit5/xml-reports/
   [
     'legacy.java.xml',
+    [76],
     '1..2',
     'ok 1 - testOne',
     '  duration_ms: 40',
@@ -108,6 +126,7 @@ for (const data of [
   ],
   [
     'node.gource.xml',
+    [7.258, 2.031],
     '# Subtest: args',
     '1..2',
     'ok 1 - 1 git repo and 1 no-git project',
@@ -128,5 +147,96 @@ for (const data of [
     '# tests 12',
     '# pass 12',
     '# fail 0',
-  ]
-]) test(tapStreamMactro, ...data)
+  ],
+  [
+    'time.xml',
+    [103, 15003],
+    'ok 1 - should not be equal',
+    '  duration_ms: 100',
+    'ok 2 - should be equal',
+    '  duration_ms: 30',
+    '# tests 2',
+    '# pass 2',
+    '# fail 0',
+    'ok 1 - someEndToEndTest',
+    '  duration_ms: 9996',
+    'ok 2 - someIntegrationTest',
+    '  duration_ms: 5003',
+    'ok 3 - someUnitTest',
+    '  duration_ms: 2',
+    '# tests 3',
+    '# pass 3',
+    '# fail 0',
+  ],
+]) {
+  for (const fast of [true, false]) {
+    test(
+      tapStreamMacro,
+      file,
+      {
+        fast,
+        scheduler: { wait: fake.resolves(null) },
+      },
+      Array.isArray(ms) ? ms : [0],
+      ...data,
+    )
+  }
+}
+
+const yamlMacro = test.macro({
+  exec: async (t, file, ...expected) => {
+    const input = createReadStream(join(dirname(import.meta), 'data'  , file))
+    const transform = new Transform({
+      scheduler: { wait: fake.resolves(null) },
+    })
+    const output = new TestStream()
+
+    await pipeline(input, transform, output)
+
+    const origin = '  ---'
+    const end = '  ...'
+    if (expected.length === 0) {
+      t.falsy(output.find(origin))
+      t.falsy(output.find(end))
+      return
+    }
+    t.truthy(output.find(origin))
+    t.truthy(output.find(end))
+    const string = output.toString()
+    let start = 0
+    for (const yaml of expected) {
+      if (yaml === null) continue
+      const stop = string.indexOf(`\n${end}\n`, start)
+      const str = string.substring(
+        string.indexOf(`\n${origin}\n`, start) + origin.length + 1,
+        stop + 2,
+      ).replace(/\n  /g, '\n')
+      start = stop + end.length
+      t.deepEqual(parse(str), yaml)
+    }
+  },
+  title: (providedTitle = '', file, ...expected) => {
+    const documents = [...expected ?? []].filter(Boolean).length
+    return `${file} file should produce ${documents === 0 ? 'no' : documents} YAML documents`
+  },
+})
+
+test(yamlMacro, 'tap.junit.xml')
+test(yamlMacro, 'legacy.java.xml',
+  {
+    duration_ms: 40,
+  },
+  {
+    duration_ms: 8,
+    comments: [
+      'org.opentest4j.AssertionFailedError: expected: <true>but was: <false>at \n' +
+      '\t\t\torg.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)...',
+    ],
+    failures: [
+      {
+        message: 'expected: <true> but was: <false>',
+        type: 'org.opentest4j.AssertionFailedError',
+      },
+    ],
+  },
+)

@@ -1,5 +1,6 @@
 import { EOL } from 'os'
 import { Transform } from 'stream'
+import { scheduler } from 'timers/promises'
 
 import sax from 'sax'
 import { finish, start, test } from 'supertap'
@@ -16,12 +17,20 @@ class JUnitTAPTransform extends Transform {
   }
   #buffer = []
   #testCases = []
+  #testSuites = []
   #failures = []
   #comments = []
   #yaml = {}
+  #ms = 0
+  #fast = false
+  #scheduler = scheduler
+  #promises = []
 
-  constructor (options) {
+  constructor ({ fast = false, scheduler, ...options }) {
     super(options)
+
+    this.#fast = fast
+    if (scheduler) this.#scheduler = scheduler
 
     this.#sax.onopentag = tag => {
       switch (tag.name) {
@@ -72,6 +81,7 @@ class JUnitTAPTransform extends Transform {
   }
 
   #onOpenTestSuite ({ attributes, isSelfClosing }) {
+    this.#testSuites.push({ attributes, isSelfClosing })
     if (!isSelfClosing) this.#initTapData(attributes?.name ?? '')
   }
 
@@ -101,35 +111,47 @@ class JUnitTAPTransform extends Transform {
     const yaml = this.#yaml
     if (this.#comments.length > 0) yaml.comments = this.#comments
     if (this.#failures.length > 0) yaml.failures = this.#failures.map(f => f.attributes)
-    this.#buffer.push(
-      test(title, {
-        index: ++this.#stats.index,
-        passed: this.#failures.length === 0,
-      }),
-      '  ---',
-      stringify(yaml).replace(/^/gm, '  ').replace(/\n  $/, ''),
-      '  ...',
-    )
+    this.#buffer.push(test(title, {
+      index: ++this.#stats.index,
+      passed: this.#failures.length === 0,
+    }))
+    if (Object.keys(yaml).length > 0) {
+      this.#buffer.push(
+        '  ---',
+        stringify(yaml).replace(/^/gm, '  ').replace(/\n  $/, ''),
+        '  ...',
+      )
+    }
     this.#comments.length = 0
     this.#failures.length = 0
   }
 
   #onCloseTestSuite () {
+    const { attributes } = this.#testSuites.pop()
+    if (!this.#fast && 'time' in attributes) {
+      this.#ms = attributes.time * 1000
+    }
     this.#buffer.push(finish(this.#stats))
     this.#tap += this.#buffer.join(EOL)
     this.#buffer.length = 0
+
+    const tap = this.#tap
+    this.#tap = ''
+    const promise = this.#scheduler.wait(this.#ms)
+    this.#promises.push(promise)
+    promise.then(() => {
+      this.push(tap)
+    })
+    this.#ms = 0
   }
 
   _transform (chunk, encoding, next) {
     this.#sax.write(chunk, encoding)
+    next()
+  }
 
-    const tap = [
-      this.#tap,
-      ...this.#buffer,
-    ].join(EOL)
-    this.#tap = ''
-    this.#buffer.length = 0
-    next(null, tap)
+  _flush (next) {
+    Promise.all(this.#promises).then(() => next())
   }
 }
 

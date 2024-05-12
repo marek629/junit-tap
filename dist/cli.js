@@ -25,16 +25,82 @@ var __privateMethod = (obj, member, method) => {
 // src/cli.js
 import { exit, stdin, stdout } from "process";
 import { pipeline } from "stream/promises";
+import yargs from "yargs";
+
+// package.json
+var package_default = {
+  name: "junit-tap",
+  type: "module",
+  bin: "./dist/cli.js",
+  engines: {
+    node: ">= 14.18.3"
+  },
+  version: "0.1.1",
+  repository: "github:marek629/junit-tap",
+  homepage: "https://github.com/marek629/junit-tap",
+  keywords: [
+    "tap",
+    "junit",
+    "testing",
+    "test",
+    "anything",
+    "protocol"
+  ],
+  license: "MIT",
+  packageManager: "yarn@4.1.1",
+  devDependencies: {
+    ava: "^6.1.2",
+    c8: "^9.1.0",
+    esbuild: "^0.20.2",
+    sinon: "^17.0.1"
+  },
+  dependencies: {
+    "dirname-filename-esm": "^1.1.1",
+    sax: "^1.3.0",
+    supertap: "^3.0.1",
+    yaml: "^2.4.1",
+    yargs: "^17.7.2"
+  },
+  scripts: {
+    build: "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm --sourcemap=external && chmod +x dist/cli.js",
+    "build:watch": "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm --sourcemap=external --watch",
+    coverage: "c8 --src src -x '.pnp.*js' -x 'test/**'  --check-coverage -r text -r html -r lcov ava",
+    demo: "node dist/cli.js < test/data/time.xml",
+    "demo:fast": "node dist/cli.js --fast < test/data/time.xml",
+    test: "ava --tap",
+    "test:watch": "ava --watch"
+  }
+};
+
+// src/i18n.js
+import { join } from "path";
+import { readFile } from "fs/promises";
+import { dirname } from "dirname-filename-esm";
+import { parse } from "yaml";
+var i18n = `${join(dirname(import.meta), "..", "i18n")}`;
+var getDescriptions = async (lang) => {
+  const [locale] = lang.split("_", 1);
+  const en = parse(await readFile(join(i18n, "en.yml"), "utf8"));
+  if (locale === "en")
+    return en;
+  try {
+    const translation = parse(await readFile(join(i18n, `${locale}.yml`), "utf8"));
+    return { ...en, ...translation };
+  } catch {
+    return en;
+  }
+};
 
 // src/transform.js
 import { EOL } from "os";
 import { Transform } from "stream";
+import { scheduler } from "timers/promises";
 import sax from "sax";
 import { finish, start, test } from "supertap";
 import { stringify } from "yaml";
-var _sax, _tap, _stats, _buffer, _testCases, _failures, _comments, _yaml, _initTapData, initTapData_fn, _onOpenTestSuite, onOpenTestSuite_fn, _onOpenTestCase, onOpenTestCase_fn, _onOpenFailure, onOpenFailure_fn, _onOpenSkipped, onOpenSkipped_fn, _onCloseTestCase, onCloseTestCase_fn, _onCloseTestSuite, onCloseTestSuite_fn;
+var _sax, _tap, _stats, _buffer, _testCases, _testSuites, _failures, _comments, _yaml, _ms, _fast, _scheduler, _promises, _initTapData, initTapData_fn, _onOpenTestSuite, onOpenTestSuite_fn, _onOpenTestCase, onOpenTestCase_fn, _onOpenFailure, onOpenFailure_fn, _onOpenSkipped, onOpenSkipped_fn, _onCloseTestCase, onCloseTestCase_fn, _onCloseTestSuite, onCloseTestSuite_fn;
 var JUnitTAPTransform = class extends Transform {
-  constructor(options) {
+  constructor({ fast = false, scheduler: scheduler2, ...options }) {
     super(options);
     __privateAdd(this, _initTapData);
     __privateAdd(this, _onOpenTestSuite);
@@ -53,9 +119,17 @@ var JUnitTAPTransform = class extends Transform {
     });
     __privateAdd(this, _buffer, []);
     __privateAdd(this, _testCases, []);
+    __privateAdd(this, _testSuites, []);
     __privateAdd(this, _failures, []);
     __privateAdd(this, _comments, []);
     __privateAdd(this, _yaml, {});
+    __privateAdd(this, _ms, 0);
+    __privateAdd(this, _fast, false);
+    __privateAdd(this, _scheduler, scheduler);
+    __privateAdd(this, _promises, []);
+    __privateSet(this, _fast, fast);
+    if (scheduler2)
+      __privateSet(this, _scheduler, scheduler2);
     __privateGet(this, _sax).onopentag = (tag) => {
       switch (tag.name) {
         case "testsuite":
@@ -89,13 +163,10 @@ var JUnitTAPTransform = class extends Transform {
   }
   _transform(chunk, encoding, next) {
     __privateGet(this, _sax).write(chunk, encoding);
-    const tap = [
-      __privateGet(this, _tap),
-      ...__privateGet(this, _buffer)
-    ].join(EOL);
-    __privateSet(this, _tap, "");
-    __privateGet(this, _buffer).length = 0;
-    next(null, tap);
+    next();
+  }
+  _flush(next) {
+    Promise.all(__privateGet(this, _promises)).then(() => next());
   }
 };
 _sax = new WeakMap();
@@ -103,9 +174,14 @@ _tap = new WeakMap();
 _stats = new WeakMap();
 _buffer = new WeakMap();
 _testCases = new WeakMap();
+_testSuites = new WeakMap();
 _failures = new WeakMap();
 _comments = new WeakMap();
 _yaml = new WeakMap();
+_ms = new WeakMap();
+_fast = new WeakMap();
+_scheduler = new WeakMap();
+_promises = new WeakMap();
 _initTapData = new WeakSet();
 initTapData_fn = function(testsuite) {
   __privateSet(this, _stats, {
@@ -125,6 +201,7 @@ initTapData_fn = function(testsuite) {
 };
 _onOpenTestSuite = new WeakSet();
 onOpenTestSuite_fn = function({ attributes, isSelfClosing }) {
+  __privateGet(this, _testSuites).push({ attributes, isSelfClosing });
   if (!isSelfClosing)
     __privateMethod(this, _initTapData, initTapData_fn).call(this, attributes?.name ?? "");
 };
@@ -159,27 +236,44 @@ onCloseTestCase_fn = function() {
     yaml.comments = __privateGet(this, _comments);
   if (__privateGet(this, _failures).length > 0)
     yaml.failures = __privateGet(this, _failures).map((f) => f.attributes);
-  __privateGet(this, _buffer).push(
-    test(title, {
-      index: ++__privateGet(this, _stats).index,
-      passed: __privateGet(this, _failures).length === 0
-    }),
-    "  ---",
-    stringify(yaml).replace(/^/gm, "  ").replace(/\n  $/, ""),
-    "  ..."
-  );
+  __privateGet(this, _buffer).push(test(title, {
+    index: ++__privateGet(this, _stats).index,
+    passed: __privateGet(this, _failures).length === 0
+  }));
+  if (Object.keys(yaml).length > 0) {
+    __privateGet(this, _buffer).push(
+      "  ---",
+      stringify(yaml).replace(/^/gm, "  ").replace(/\n  $/, ""),
+      "  ..."
+    );
+  }
   __privateGet(this, _comments).length = 0;
   __privateGet(this, _failures).length = 0;
 };
 _onCloseTestSuite = new WeakSet();
 onCloseTestSuite_fn = function() {
+  const { attributes } = __privateGet(this, _testSuites).pop();
+  if (!__privateGet(this, _fast) && "time" in attributes) {
+    __privateSet(this, _ms, attributes.time * 1e3);
+  }
   __privateGet(this, _buffer).push(finish(__privateGet(this, _stats)));
   __privateSet(this, _tap, __privateGet(this, _tap) + __privateGet(this, _buffer).join(EOL));
   __privateGet(this, _buffer).length = 0;
+  const tap = __privateGet(this, _tap);
+  __privateSet(this, _tap, "");
+  const promise = __privateGet(this, _scheduler).wait(__privateGet(this, _ms));
+  __privateGet(this, _promises).push(promise);
+  promise.then(() => {
+    this.push(tap);
+  });
+  __privateSet(this, _ms, 0);
 };
 var transform_default = JUnitTAPTransform;
 
 // src/cli.js
-var transform = new transform_default();
+var { argv } = yargs(process.argv.slice(2)).boolean("fast").describe(await getDescriptions(yargs().locale())).default({
+  fast: false
+}).help().version(package_default.version);
+var transform = new transform_default(argv);
 await pipeline(stdin, transform, stdout);
 exit(0);

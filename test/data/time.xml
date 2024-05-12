@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="5" name="Tap-Junit" failures="2">
+    <testsuite tests="2" failures="0" skipped="0" time="0.103">
+        <testcase id="1" name="should not be equal" time="0.1" />
+        <testcase id="2" name="should be equal" time="0.03" />
+    </testsuite>
+    <testsuite
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd"
+        name="com.baeldung.execution.time.SampleExecutionTimeUnitTest"
+        time="15.003" tests="3" errors="0" skipped="0" failures="0">
+        <testcase name="someEndToEndTest"
+            classname="com.baeldung.execution.time.SampleExecutionTimeUnitTest"
+            time="9.996" />
+        <testcase name="someIntegrationTest"
+            classname="com.baeldung.execution.time.SampleExecutionTimeUnitTest"
+            time="5.003" />
+        <testcase name="someUnitTest"
+            classname="com.baeldung.execution.time.SampleExecutionTimeUnitTest"
+            time="0.002" />
+    </testsuite>
+</testsuites>

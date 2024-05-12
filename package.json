@@ -20,16 +20,23 @@
   "packageManager": "yarn@4.1.1",
   "devDependencies": {
     "ava": "^6.1.2",
-    "dirname-filename-esm": "^1.1.1",
-    "esbuild": "^0.20.2"
+    "c8": "^9.1.0",
+    "esbuild": "^0.20.2",
+    "sinon": "^17.0.1"
   },
   "dependencies": {
+    "dirname-filename-esm": "^1.1.1",
     "sax": "^1.3.0",
     "supertap": "^3.0.1",
-    "yaml": "^2.4.1"
+    "yaml": "^2.4.1",
+    "yargs": "^17.7.2"
   },
   "scripts": {
-    "build": "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm && chmod +x dist/cli.js",
+    "build": "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm --sourcemap=external && chmod +x dist/cli.js",
+    "build:watch": "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm --sourcemap=external --watch",
+    "coverage": "c8 --src src -x '.pnp.*js' -x 'test/**'  --check-coverage -r text -r html -r lcov ava",
+    "demo": "node dist/cli.js < test/data/time.xml",
+    "demo:fast": "node dist/cli.js --fast < test/data/time.xml",
     "test": "ava --tap",
     "test:watch": "ava --watch"
   }
