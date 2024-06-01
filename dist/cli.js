@@ -52,7 +52,8 @@ var package_default = {
     ava: "^6.1.2",
     c8: "^9.1.0",
     esbuild: "^0.20.2",
-    sinon: "^17.0.1"
+    sinon: "^17.0.1",
+    "tap-merge": "^0.3.1"
   },
   dependencies: {
     "dirname-filename-esm": "^1.1.1",
@@ -65,8 +66,8 @@ var package_default = {
     build: "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm --sourcemap=external && chmod +x dist/cli.js",
     "build:watch": "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm --sourcemap=external --watch",
     coverage: "c8 --src src -x '.pnp.*js' -x 'test/**'  --check-coverage -r text -r html -r lcov ava",
-    demo: "node dist/cli.js < test/data/time.xml",
-    "demo:fast": "node dist/cli.js --fast < test/data/time.xml",
+    demo: "node dist/cli.js < test/data/time.xml | tap-merge",
+    "demo:fast": "node dist/cli.js --fast < test/data/time.xml  | tap-merge",
     test: "ava --tap",
     "test:watch": "ava --watch"
   }
@@ -98,7 +99,8 @@ import { scheduler } from "timers/promises";
 import sax from "sax";
 import { finish, start, test } from "supertap";
 import { stringify } from "yaml";
-var _sax, _tap, _stats, _buffer, _testCases, _testSuites, _failures, _comments, _yaml, _ms, _fast, _scheduler, _promises, _initTapData, initTapData_fn, _onOpenTestSuite, onOpenTestSuite_fn, _onOpenTestCase, onOpenTestCase_fn, _onOpenFailure, onOpenFailure_fn, _onOpenSkipped, onOpenSkipped_fn, _onCloseTestCase, onCloseTestCase_fn, _onCloseTestSuite, onCloseTestSuite_fn;
+var round = (ms) => parseFloat(ms.toFixed(2));
+var _sax, _tap, _stats, _buffer, _testCases, _testSuites, _failures, _comments, _yaml, _ms, _fast, _scheduler, _consumedMs, _promise, _initTapData, initTapData_fn, _onOpenTestSuite, onOpenTestSuite_fn, _onOpenTestCase, onOpenTestCase_fn, _onOpenFailure, onOpenFailure_fn, _onOpenSkipped, onOpenSkipped_fn, _onCloseTestCase, onCloseTestCase_fn, _onCloseTestSuite, onCloseTestSuite_fn, _flush, flush_fn, _wait, wait_fn;
 var JUnitTAPTransform = class extends Transform {
   constructor({ fast = false, scheduler: scheduler2, ...options }) {
     super(options);
@@ -109,6 +111,8 @@ var JUnitTAPTransform = class extends Transform {
     __privateAdd(this, _onOpenSkipped);
     __privateAdd(this, _onCloseTestCase);
     __privateAdd(this, _onCloseTestSuite);
+    __privateAdd(this, _flush);
+    __privateAdd(this, _wait);
     __privateAdd(this, _sax, new sax.SAXParser(true));
     __privateAdd(this, _tap, "");
     __privateAdd(this, _stats, {
@@ -126,7 +130,8 @@ var JUnitTAPTransform = class extends Transform {
     __privateAdd(this, _ms, 0);
     __privateAdd(this, _fast, false);
     __privateAdd(this, _scheduler, scheduler);
-    __privateAdd(this, _promises, []);
+    __privateAdd(this, _consumedMs, 0);
+    __privateAdd(this, _promise, Promise.resolve());
     __privateSet(this, _fast, fast);
     if (scheduler2)
       __privateSet(this, _scheduler, scheduler2);
@@ -166,7 +171,7 @@ var JUnitTAPTransform = class extends Transform {
     next();
   }
   _flush(next) {
-    Promise.all(__privateGet(this, _promises)).then(() => next());
+    __privateGet(this, _promise).then(() => next());
   }
 };
 _sax = new WeakMap();
@@ -181,7 +186,8 @@ _yaml = new WeakMap();
 _ms = new WeakMap();
 _fast = new WeakMap();
 _scheduler = new WeakMap();
-_promises = new WeakMap();
+_consumedMs = new WeakMap();
+_promise = new WeakMap();
 _initTapData = new WeakSet();
 initTapData_fn = function(testsuite) {
   __privateSet(this, _stats, {
@@ -227,9 +233,12 @@ onCloseTestCase_fn = function() {
   if (!isSelfClosing && __privateGet(this, _failures).length > 0) {
     __privateGet(this, _stats).failed++;
   }
-  let title = attributes.name;
+  const title = attributes.name;
   if ("time" in attributes) {
     __privateGet(this, _yaml).duration_ms = attributes.time * 1e3;
+    if (!__privateGet(this, _fast)) {
+      __privateSet(this, _ms, round(__privateGet(this, _yaml).duration_ms));
+    }
   }
   const yaml = __privateGet(this, _yaml);
   if (__privateGet(this, _comments).length > 0)
@@ -249,24 +258,43 @@ onCloseTestCase_fn = function() {
   }
   __privateGet(this, _comments).length = 0;
   __privateGet(this, _failures).length = 0;
+  if (__privateGet(this, _ms) > 0) {
+    __privateSet(this, _consumedMs, __privateGet(this, _consumedMs) + __privateGet(this, _ms));
+    __privateMethod(this, _flush, flush_fn).call(this);
+  }
 };
 _onCloseTestSuite = new WeakSet();
 onCloseTestSuite_fn = function() {
   const { attributes } = __privateGet(this, _testSuites).pop();
   if (!__privateGet(this, _fast) && "time" in attributes) {
-    __privateSet(this, _ms, attributes.time * 1e3);
+    __privateSet(this, _ms, round(attributes.time * 1e3));
   }
   __privateGet(this, _buffer).push(finish(__privateGet(this, _stats)));
+  __privateSet(this, _ms, __privateGet(this, _ms) - __privateGet(this, _consumedMs));
+  if (__privateGet(this, _ms) < 0)
+    __privateSet(this, _ms, 0);
+  else
+    __privateSet(this, _ms, round(__privateGet(this, _ms)));
+  __privateSet(this, _consumedMs, 0);
+  __privateMethod(this, _flush, flush_fn).call(this);
+};
+_flush = new WeakSet();
+flush_fn = function() {
   __privateSet(this, _tap, __privateGet(this, _tap) + __privateGet(this, _buffer).join(EOL));
   __privateGet(this, _buffer).length = 0;
+  if (!__privateGet(this, _tap).endsWith("\n"))
+    __privateSet(this, _tap, __privateGet(this, _tap) + "\n");
   const tap = __privateGet(this, _tap);
+  const ms = __privateGet(this, _ms);
+  __privateSet(this, _promise, __privateGet(this, _promise).then(() => __privateMethod(this, _wait, wait_fn).call(this, ms, tap)));
   __privateSet(this, _tap, "");
-  const promise = __privateGet(this, _scheduler).wait(__privateGet(this, _ms));
-  __privateGet(this, _promises).push(promise);
-  promise.then(() => {
+  __privateSet(this, _ms, 0);
+};
+_wait = new WeakSet();
+wait_fn = function(ms, tap) {
+  return __privateGet(this, _scheduler).wait(ms).then(() => {
     this.push(tap);
   });
-  __privateSet(this, _ms, 0);
 };
 var transform_default = JUnitTAPTransform;
 

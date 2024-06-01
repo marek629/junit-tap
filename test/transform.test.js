@@ -5,7 +5,7 @@ import { pipeline } from 'stream/promises'
 
 import test from 'ava'
 import { dirname } from 'dirname-filename-esm'
-import { fake } from 'sinon'
+import { fake, useFakeTimers } from 'sinon'
 import { parse } from 'yaml'
 
 import Transform from '../src/transform.js'
@@ -32,7 +32,7 @@ class TestStream extends Writable {
 }
 
 const tapStreamMacro = test.macro({
-  exec: async (t, file, config, times, ...records) => {
+  exec: async (t, file, config, ...records) => {
     const input = createReadStream(join(dirname(import.meta), 'data'  , file))
     const transform = new Transform(config)
     const output = new TestStream()
@@ -40,15 +40,6 @@ const tapStreamMacro = test.macro({
 
     await pipeline(input, transform, output)
 
-    t.is(config.scheduler.wait.callCount, times.length)
-    for (let index = 0; index < times.length; index++) {
-      const call = config.scheduler.wait.getCall(index)
-      const ms = config.fast ? 0 : times[index]
-      t.is(
-        Math.round(call.firstArg * precission), Math.round(ms * precission),
-        `Transform should take ${ms} ms but took ${call.firstArg} ms.`,
-      )
-    }
     for (const str of records) t.truthy(output.find(str), `Expected "${str}" in """\n${output.toString()}"""`)
     t.snapshot(output.toString())
   },
@@ -73,11 +64,10 @@ const selfGeneratedRecords = [
   '# fail 1',
 ]
 
-for (const [file, ms, ...data] of [
+for (const [file, ...data] of [
   // example from https://howtodoinjava.com/junit5/xml-reports/
   [
     'legacy.java.xml',
-    [76],
     '1..2',
     'ok 1 - testOne',
     '  duration_ms: 40',
@@ -126,7 +116,6 @@ for (const [file, ms, ...data] of [
   ],
   [
     'node.gource.xml',
-    [7.258, 2.031],
     '# Subtest: args',
     '1..2',
     'ok 1 - 1 git repo and 1 no-git project',
@@ -150,7 +139,6 @@ for (const [file, ms, ...data] of [
   ],
   [
     'time.xml',
-    [103, 15003],
     'ok 1 - should not be equal',
     '  duration_ms: 100',
     'ok 2 - should be equal',
@@ -177,7 +165,6 @@ for (const [file, ms, ...data] of [
         fast,
         scheduler: { wait: fake.resolves(null) },
       },
-      Array.isArray(ms) ? ms : [0],
       ...data,
     )
   }
@@ -215,7 +202,7 @@ const yamlMacro = test.macro({
       t.deepEqual(parse(str), yaml)
     }
   },
-  title: (providedTitle = '', file, ...expected) => {
+  title: (_, file, ...expected) => {
     const documents = [...expected ?? []].filter(Boolean).length
     return `${file} file should produce ${documents === 0 ? 'no' : documents} YAML documents`
   },
@@ -240,3 +227,33 @@ test(yamlMacro, 'legacy.java.xml',
     ],
   },
 )
+
+const timeMacro = test.macro({
+  exec: async (t, file, ...times) => {
+    const input = createReadStream(join(dirname(import.meta), 'data'  , file))
+    const wait = fake(async ms => {
+      clock.tick(ms)
+      await clock.runAllAsync()
+    })
+    const clock = useFakeTimers(841_510)
+    const transform = new Transform({
+      scheduler: { wait },
+    })
+    const output = new TestStream()
+
+    await pipeline(input, transform, output)
+    clock.restore()
+
+    t.is(output.data.length, times.length)
+    t.deepEqual(wait.getCalls().map(v => v.firstArg), times)
+    t.snapshot(`${output}`)
+  },
+  title: (_, file) => `should support time attribute for ${file} file`,
+})
+
+test.serial(timeMacro, 'legacy.java.xml', 40, 8, 28)
+test.serial(timeMacro, 'node.gource.xml',
+  4.68, 1.24, 1.34,
+  1.17, 1.14, 1.12, 1.10, 1.10, 1.14, 1.15, 1.08, 0.99, 0.97, 0.95, 0.94, 0,
+)
+test.serial(timeMacro, 'time.xml', 100, 30, 0, 9996, 5003, 2, 2)

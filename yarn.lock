@@ -1142,6 +1142,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"highland@npm:^2.5.1":
+  version: 2.13.5
+  resolution: "highland@npm:2.13.5"
+  dependencies:
+    util-deprecate: "npm:^1.0.2"
+  checksum: 10c0/8c024ae3da1bbbeae24366563bb6b7b124fd31a7b8cddb56094e0651d5f9220e9395a9f9d5a74131f82806dea257fe43efebdf1e8b110c252a22fd3bf8502476
+  languageName: node
+  linkType: hard
+
 "html-escaper@npm:^2.0.0":
   version: 2.0.2
   resolution: "html-escaper@npm:2.0.2"
@@ -1334,6 +1343,7 @@ __metadata:
     sax: "npm:^1.3.0"
     sinon: "npm:^17.0.1"
     supertap: "npm:^3.0.1"
+    tap-merge: "npm:^0.3.1"
     yaml: "npm:^2.4.1"
     yargs: "npm:^17.7.2"
   bin:
@@ -1981,6 +1991,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tap-merge@npm:^0.3.1":
+  version: 0.3.1
+  resolution: "tap-merge@npm:0.3.1"
+  dependencies:
+    highland: "npm:^2.5.1"
+  bin:
+    tap-merge: ./cli.js
+  checksum: 10c0/0532b75edddcf8c216f7b70708d05163bd910e3d589c5ac5561805c975e4372a8c6f51456a58034799c15049a1e9e6c6f54be1f206ff9e4afcc71991f0139f30
+  languageName: node
+  linkType: hard
+
 "tar@npm:^6.1.11":
   version: 6.2.1
   resolution: "tar@npm:6.2.1"
@@ -2057,7 +2078,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"util-deprecate@npm:^1.0.1":
+"util-deprecate@npm:^1.0.1, util-deprecate@npm:^1.0.2":
   version: 1.0.2
   resolution: "util-deprecate@npm:1.0.2"
   checksum: 10c0/41a5bdd214df2f6c3ecf8622745e4a366c4adced864bc3c833739791aeeeb1838119af7daed4ba36428114b5c67dcda034a79c882e97e43c03e66a4dd7389942

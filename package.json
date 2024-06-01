@@ -22,7 +22,8 @@
     "ava": "^6.1.2",
     "c8": "^9.1.0",
     "esbuild": "^0.20.2",
-    "sinon": "^17.0.1"
+    "sinon": "^17.0.1",
+    "tap-merge": "^0.3.1"
   },
   "dependencies": {
     "dirname-filename-esm": "^1.1.1",
@@ -35,8 +36,8 @@
     "build": "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm --sourcemap=external && chmod +x dist/cli.js",
     "build:watch": "esbuild src/cli.js --bundle --platform=node --packages=external --target=es2020 --outdir=dist --supported:top-level-await=true --format=esm --sourcemap=external --watch",
     "coverage": "c8 --src src -x '.pnp.*js' -x 'test/**'  --check-coverage -r text -r html -r lcov ava",
-    "demo": "node dist/cli.js < test/data/time.xml",
-    "demo:fast": "node dist/cli.js --fast < test/data/time.xml",
+    "demo": "node dist/cli.js < test/data/time.xml | tap-merge",
+    "demo:fast": "node dist/cli.js --fast < test/data/time.xml  | tap-merge",
     "test": "ava --tap",
     "test:watch": "ava --watch"
   }

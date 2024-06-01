@@ -6,6 +6,8 @@ import sax from 'sax'
 import { finish, start, test } from 'supertap'
 import { stringify } from 'yaml'
 
+const round = ms => parseFloat(ms.toFixed(2))
+
 class JUnitTAPTransform extends Transform {
   #sax = new sax.SAXParser(true)
   #tap = ''
@@ -24,7 +26,8 @@ class JUnitTAPTransform extends Transform {
   #ms = 0
   #fast = false
   #scheduler = scheduler
-  #promises = []
+  #consumedMs = 0
+  #promise = Promise.resolve()
 
   constructor ({ fast = false, scheduler, ...options }) {
     super(options)
@@ -104,9 +107,12 @@ class JUnitTAPTransform extends Transform {
     if (!isSelfClosing && this.#failures.length > 0) {
       this.#stats.failed++
     }
-    let title = attributes.name
+    const title = attributes.name
     if ('time' in attributes) {
       this.#yaml.duration_ms = attributes.time * 1000
+      if (!this.#fast) {
+        this.#ms = round(this.#yaml.duration_ms)
+      }
     }
     const yaml = this.#yaml
     if (this.#comments.length > 0) yaml.comments = this.#comments
@@ -124,25 +130,43 @@ class JUnitTAPTransform extends Transform {
     }
     this.#comments.length = 0
     this.#failures.length = 0
+
+    if (this.#ms > 0) {
+      this.#consumedMs += this.#ms
+      this.#flush()
+    }
   }
 
   #onCloseTestSuite () {
     const { attributes } = this.#testSuites.pop()
     if (!this.#fast && 'time' in attributes) {
-      this.#ms = attributes.time * 1000
+      this.#ms = round(attributes.time * 1000)
     }
     this.#buffer.push(finish(this.#stats))
+
+    this.#ms -= this.#consumedMs
+    if (this.#ms < 0) this.#ms = 0
+    else this.#ms = round(this.#ms)
+    this.#consumedMs = 0
+    this.#flush()
+  }
+
+  #flush () {
     this.#tap += this.#buffer.join(EOL)
     this.#buffer.length = 0
+    if (!this.#tap.endsWith('\n')) this.#tap += '\n'
 
     const tap = this.#tap
+    const ms = this.#ms
+    this.#promise = this.#promise.then(() => this.#wait(ms, tap))
     this.#tap = ''
-    const promise = this.#scheduler.wait(this.#ms)
-    this.#promises.push(promise)
-    promise.then(() => {
+    this.#ms = 0
+  }
+
+  #wait (ms, tap) {
+    return this.#scheduler.wait(ms).then(() => {
       this.push(tap)
     })
-    this.#ms = 0
   }
 
   _transform (chunk, encoding, next) {
@@ -151,7 +175,7 @@ class JUnitTAPTransform extends Transform {
   }
 
   _flush (next) {
-    Promise.all(this.#promises).then(() => next())
+    this.#promise.then(() => next())
   }
 }
 
