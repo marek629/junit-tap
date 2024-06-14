@@ -5,7 +5,7 @@ import { pipeline } from 'stream/promises'
 
 import yargs from 'yargs'
 
-import pkg from '../package.json' assert { type: 'json' }
+import pkg from '../package.json' with { type: 'json' }
 
 import { getDescriptions } from './i18n.js'
 import Transform from './transform.js'

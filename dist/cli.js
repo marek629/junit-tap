@@ -35,7 +35,7 @@ var package_default = {
   engines: {
     node: ">= 14.18.3"
   },
-  version: "0.1.1",
+  version: "0.2.0",
   repository: "github:marek629/junit-tap",
   homepage: "https://github.com/marek629/junit-tap",
   keywords: [
