@@ -1,7 +1,7 @@
 import { test } from 'supertap'
 import { stringify } from 'yaml'
 
-import { comment, failure, yaml } from '../loader.js'
+import { comment, error, failure, yaml } from '../loader.js'
 import Observer from './Observer.js'
 
 class TestCaseObserver extends Observer {
@@ -12,6 +12,7 @@ class TestCaseObserver extends Observer {
   #flush
   #testSuite
   #failure
+  #error
   #yaml
   #comment
 
@@ -23,6 +24,7 @@ class TestCaseObserver extends Observer {
     this.#flush = flush
     this.#testSuite = testSuite
     this.#failure = failure(sax)
+    this.#error = error(sax)
     this.#yaml = yaml(sax)
     this.#comment = comment(sax)
     this.#comment.testCase = this
@@ -40,7 +42,7 @@ class TestCaseObserver extends Observer {
 
   onClose () {
     const { attributes, isSelfClosing } = this.#cases.pop()
-    if (!isSelfClosing && !this.#failure.empty) {
+    if (!isSelfClosing && !(this.#failure.empty && this.#error.empty)) {
       this.#testSuite.testFailed()
     }
     const title = attributes.name
@@ -53,9 +55,10 @@ class TestCaseObserver extends Observer {
     const yaml = this.#yaml.values
     if (!this.#comment.empty) yaml.comments = this.#comment.values
     if (!this.#failure.empty) yaml.failures = this.#failure.attributes
+    if (!this.#error.empty) yaml.errors = this.#error.attributes
     this.#buffer.push(test(title, {
       index: this.#testSuite.testIndex(),
-      passed: this.#failure.empty,
+      passed: this.#failure.empty && this.#error.empty,
     }))
     if (Object.keys(yaml).length > 0) {
       this.#buffer.push(
@@ -66,6 +69,8 @@ class TestCaseObserver extends Observer {
     }
     this.#comment.flush()
     this.#failure.flush()
+    this.#error.flush()
+    this.#yaml.flush()
 
     if (this.#timer.ms > 0) {
       this.#timer.consume()

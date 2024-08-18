@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testsuite name="failures collected from other files" time="0.07258" disabled="0" errors="0" tests="3" failures="3" skipped="0" hostname="ideapad320-i5-80xl">
+		<testcase name="/tmp/gource/test/args.test.js" time="0.053620" classname="test" failure="test failed">
+            <failure type="testCodeFailure" message="test failed">
+[Error: test failed] { code: 'ERR_TEST_FAILURE', failureType: 'testCodeFailure', cause: 'test failed', exitCode: 1, signal: null }
+            </failure>
+        </testcase>
+        <testcase classname="com.howtodoinjava.junit5.examples.xmlReport.HelloTest" name="testTwo" time="0.008">
+            <failure message="expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">
+                <![CDATA[org.opentest4j.AssertionFailedError: expected: <true>but was: <false>at 
+                org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)...]]>
+            </failure>
+        </testcase>
+        <testcase name="should produce TAP stream in tap.junit.xml" id="2">
+            <failure message="Expected &quot;# skipped 1&quot; in &quot;&quot;&quot;
+TAP version 13
+not ok 1 - test is equal in undefineds
+not ok 2 - test skip extra # SKIP in undefineds
+not ok 3 - should not be equal in undefineds
+not ok 4 - should be equal in undefineds
+
+1..4
+# tests 4
+# pass 3
+# fail 1
+            &quot;&quot;&quot;" type="fail"/>
+        </testcase>
+	</testsuite>
+	<testsuite name="failures converted to errors" time="0.31" disabled="0" errors="3" tests="3" failures="0" skipped="0" hostname="ideapad320-i5-80xl">
+		<testcase name="/tmp/gource/test/args.test.js" time="0.053620" classname="test" failure="test failed">
+            <error type="testCodeError" message="test failed">
+[Error: test failed] { code: 'ERR_TEST_ERROR', errorType: 'testCodeError', cause: 'test failed', exitCode: 1, signal: null }
+            </error>
+        </testcase>
+        <testcase classname="com.howtodoinjava.junit5.examples.xmlReport.HelloTest" name="testTwo" time="0.008">
+            <error message="expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">
+                <![CDATA[org.opentest4j.AssertionFailedError: expected: <true>but was: <false>at 
+                org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)...]]>
+            </error>
+        </testcase>
+        <testcase name="should produce TAP stream in tap.junit.xml" id="2">
+            <error message="Expected &quot;# skipped 1&quot; in &quot;&quot;&quot;
+TAP version 13
+not ok 1 - test is equal in undefineds
+not ok 2 - test skip extra # SKIP in undefineds
+not ok 3 - should not be equal in undefineds
+not ok 4 - should be equal in undefineds
+
+1..4
+# tests 4
+# pass 3
+# fail 1
+            &quot;&quot;&quot;" type="fail"/>
+        </testcase>
+	</testsuite>
+    <testsuite name="mixed variations" time="0.31" disabled="0" errors="1" tests="3" failures="1" skipped="1" hostname="ideapad320-i5-80xl">
+		<testcase name="/tmp/gource/test/args.test.js" time="0.053620" classname="test" failure="test failed">
+            <error type="testCodeError" message="test failed">
+[Error: test failed] { code: 'ERR_TEST_ERROR', errorType: 'testCodeError', cause: 'test failed', exitCode: 1, signal: null }
+            </error>
+        </testcase>
+        <testcase classname="com.howtodoinjava.junit5.examples.xmlReport.HelloTest" name="testTwo" time="0.012">
+            <failure message="expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">
+                <![CDATA[org.opentest4j.AssertionFailedError: expected: <true>but was: <false>at 
+                org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)...]]>
+            </failure>
+        </testcase>
+        <testcase name="should produce TAP stream in tap.junit.xml # SKIP" id="2">
+            <skipped />
+        </testcase>
+	</testsuite>
+</testsuites>

@@ -1,6 +1,5 @@
-import { randomUUID } from 'crypto'
-
 import CommentObserver from './xml/CommentObserver.js'
+import ErrorObserver from './xml/ErrorObserver.js'
 import FailureObserver from './xml/FailureObserver.js'
 import TextObserver from './xml/TextObserver.js'
 import YamlObserver from './xml/YamlObserver.js'
@@ -14,9 +13,9 @@ const create = () => {
 
   const observer = Object.seal({
     failure: null,
+    error: null,
     comment: null,
     yaml: null,
-    text: null,
   })
 
   return { xml, observer }
@@ -29,20 +28,19 @@ const instance = (container, key, creator, area) => value => {
 }
 
 const setter = (container, key) => value => {
-  const id = randomUUID()
+  const { uuid: id } = value
   scope[id] = create()
-  value.uuid = id
   return instance(container, key, () => value, scope[id])()
 }
 
 const saxParser = setter('xml', 'sax')
 
 const failure = instance('observer', 'failure', ({ xml }) => new FailureObserver(xml.sax))
+const error = instance('observer', 'error', ({ xml }) => new ErrorObserver(xml.sax))
 const comment = instance('observer', 'comment', ({ xml }) => new CommentObserver(xml.sax))
 const yaml = instance('observer', 'yaml', ({ xml }) => new YamlObserver(xml.sax))
-const text = instance('observer', 'text', ({ xml }) => new TextObserver(xml.sax))
 
 export {
   saxParser,
-  failure, comment, yaml, text,
+  failure, error, comment, yaml,
 }

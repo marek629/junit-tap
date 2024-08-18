@@ -1,18 +1,17 @@
-import { failure } from '../loader.js'
 import Observer from './Observer.js'
 
 class TextObserver extends Observer {
   #text = ''
-  #failure
+  #breakdown
 
-  constructor (sax) {
+  constructor (sax, breakdown) {
     super(sax)
-    this.#failure = failure(sax)
-    this._sax.ontext = text => {
-      if (this.#failure.empty) return
+    this.#breakdown = breakdown
+    sax.on('text', text => {
+      if (this.#breakdown.empty) return
       const t = text.trimEnd()
       if (t.length > 0) this.#text = t
-    }
+    })
   }
 
   flush () {

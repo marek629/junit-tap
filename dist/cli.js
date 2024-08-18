@@ -102,14 +102,38 @@ var getDescriptions = async (lang) => {
 // src/transform.js
 import { EOL } from "os";
 import { Transform } from "stream";
-import sax from "sax";
 
-// src/xml/TestCaseObserver.js
-import { test } from "supertap";
-import { stringify } from "yaml";
-
-// src/loader.js
+// src/xml/SaxWrapper.js
 import { randomUUID } from "crypto";
+import { EventEmitter } from "events";
+import sax from "sax";
+var _sax, _uuid;
+var SaxWrapper = class extends EventEmitter {
+  constructor() {
+    super();
+    __privateAdd(this, _sax, new sax.SAXParser(true));
+    __privateAdd(this, _uuid, randomUUID());
+    __privateGet(this, _sax).ontext = (text) => this.emit("text", text);
+  }
+  get uuid() {
+    return __privateGet(this, _uuid);
+  }
+  set onopentag(cb) {
+    __privateGet(this, _sax).onopentag = cb;
+  }
+  set onclosetag(cb) {
+    __privateGet(this, _sax).onclosetag = cb;
+  }
+  set oncdata(cb) {
+    __privateGet(this, _sax).oncdata = cb;
+  }
+  write(chunk, encoding) {
+    return __privateGet(this, _sax).write(chunk, encoding);
+  }
+};
+_sax = new WeakMap();
+_uuid = new WeakMap();
+var SaxWrapper_default = SaxWrapper;
 
 // src/xml/Observer.js
 var Observer = class {
@@ -125,6 +149,26 @@ var Observer = class {
   }
 };
 var Observer_default = Observer;
+
+// src/xml/SkippedObserver.js
+var _testSuite;
+var SkippedObserver = class extends Observer_default {
+  constructor(sax2, testSuite) {
+    super(sax2);
+    __privateAdd(this, _testSuite, void 0);
+    __privateSet(this, _testSuite, testSuite);
+  }
+  onOpen({ isSelfClosing }) {
+    if (isSelfClosing)
+      __privateGet(this, _testSuite).testSkipped();
+  }
+};
+_testSuite = new WeakMap();
+var SkippedObserver_default = SkippedObserver;
+
+// src/xml/TestCaseObserver.js
+import { test } from "supertap";
+import { stringify } from "yaml";
 
 // src/xml/CommentObserver.js
 var _comments, _testCase;
@@ -157,68 +201,73 @@ _comments = new WeakMap();
 _testCase = new WeakMap();
 var CommentObserver_default = CommentObserver;
 
-// src/xml/FailureObserver.js
-var _failures, _text;
-var FailureObserver = class extends Observer_default {
-  constructor(sax2) {
+// src/xml/TextObserver.js
+var _text, _breakdown;
+var TextObserver = class extends Observer_default {
+  constructor(sax2, breakdown) {
     super(sax2);
-    __privateAdd(this, _failures, []);
-    __privateAdd(this, _text, void 0);
-    process.nextTick(() => {
-      __privateSet(this, _text, text(sax2));
+    __privateAdd(this, _text, "");
+    __privateAdd(this, _breakdown, void 0);
+    __privateSet(this, _breakdown, breakdown);
+    sax2.on("text", (text) => {
+      if (__privateGet(this, _breakdown).empty)
+        return;
+      const t = text.trimEnd();
+      if (t.length > 0)
+        __privateSet(this, _text, t);
     });
   }
-  get empty() {
-    return __privateGet(this, _failures).length === 0;
-  }
-  get attributes() {
-    return __privateGet(this, _failures).map((f) => f.attributes);
-  }
-  onOpen({ attributes, isSelfClosing }) {
-    __privateGet(this, _failures).length = 0;
-    __privateGet(this, _failures).push({ attributes, isSelfClosing });
-  }
-  onClose() {
-    const text2 = __privateGet(this, _text).flush();
-    if (text2.length > 0) {
-      __privateGet(this, _failures)[__privateGet(this, _failures).length - 1].attributes.text = text2;
-    }
-  }
   flush() {
-    const a = [...__privateGet(this, _failures)];
-    __privateGet(this, _failures).length = 0;
-    return a;
-  }
-};
-_failures = new WeakMap();
-_text = new WeakMap();
-var FailureObserver_default = FailureObserver;
-
-// src/xml/TextObserver.js
-var _text2, _failure;
-var TextObserver = class extends Observer_default {
-  constructor(sax2) {
-    super(sax2);
-    __privateAdd(this, _text2, "");
-    __privateAdd(this, _failure, void 0);
-    __privateSet(this, _failure, failure(sax2));
-    this._sax.ontext = (text2) => {
-      if (__privateGet(this, _failure).empty)
-        return;
-      const t = text2.trimEnd();
-      if (t.length > 0)
-        __privateSet(this, _text2, t);
-    };
-  }
-  flush() {
-    const t = __privateGet(this, _text2);
-    __privateSet(this, _text2, "");
+    const t = __privateGet(this, _text);
+    __privateSet(this, _text, "");
     return t;
   }
 };
-_text2 = new WeakMap();
-_failure = new WeakMap();
+_text = new WeakMap();
+_breakdown = new WeakMap();
 var TextObserver_default = TextObserver;
+
+// src/xml/BreakdownObserver.js
+var BreakdownObserver = class extends Observer_default {
+  constructor(sax2) {
+    super(sax2);
+    __publicField(this, "_list", []);
+    __publicField(this, "_text");
+    this._text = new TextObserver_default(sax2, this);
+  }
+  get empty() {
+    return this._list.length === 0;
+  }
+  get attributes() {
+    return this._list.map((f) => f.attributes);
+  }
+  onOpen({ attributes, isSelfClosing }) {
+    this._list.length = 0;
+    this._list.push({ attributes, isSelfClosing });
+  }
+  onClose() {
+    const text = this._text.flush();
+    if (text.length > 0) {
+      this._list[this._list.length - 1].attributes.text = text;
+    }
+  }
+  flush() {
+    const a = [...this._list];
+    this._list.length = 0;
+    return a;
+  }
+};
+var BreakdownObserver_default = BreakdownObserver;
+
+// src/xml/ErrorObserver.js
+var ErrorObserver = class extends BreakdownObserver_default {
+};
+var ErrorObserver_default = ErrorObserver;
+
+// src/xml/FailureObserver.js
+var FailureObserver = class extends BreakdownObserver_default {
+};
+var FailureObserver_default = FailureObserver;
 
 // src/xml/YamlObserver.js
 import { clone } from "ramda";
@@ -254,9 +303,9 @@ var create = () => {
   });
   const observer = Object.seal({
     failure: null,
+    error: null,
     comment: null,
-    yaml: null,
-    text: null
+    yaml: null
   });
   return { xml, observer };
 };
@@ -267,19 +316,18 @@ var instance = (container, key, creator, area) => (value) => {
   return box[key];
 };
 var setter = (container, key) => (value) => {
-  const id = randomUUID();
+  const { uuid: id } = value;
   scope[id] = create();
-  value.uuid = id;
   return instance(container, key, () => value, scope[id])();
 };
 var saxParser = setter("xml", "sax");
 var failure = instance("observer", "failure", ({ xml }) => new FailureObserver_default(xml.sax));
+var error = instance("observer", "error", ({ xml }) => new ErrorObserver_default(xml.sax));
 var comment = instance("observer", "comment", ({ xml }) => new CommentObserver_default(xml.sax));
 var yaml = instance("observer", "yaml", ({ xml }) => new YamlObserver_default(xml.sax));
-var text = instance("observer", "text", ({ xml }) => new TextObserver_default(xml.sax));
 
 // src/xml/TestCaseObserver.js
-var _cases, _buffer, _fast, _timer, _flush, _testSuite, _failure2, _yaml2, _comment;
+var _cases, _buffer, _fast, _timer, _flush, _testSuite2, _failure, _error, _yaml2, _comment;
 var TestCaseObserver = class extends Observer_default {
   constructor(sax2, buffer, isFast, timer, flush, testSuite) {
     super(sax2);
@@ -288,20 +336,22 @@ var TestCaseObserver = class extends Observer_default {
     __privateAdd(this, _fast, false);
     __privateAdd(this, _timer, void 0);
     __privateAdd(this, _flush, void 0);
-    __privateAdd(this, _testSuite, void 0);
-    __privateAdd(this, _failure2, void 0);
+    __privateAdd(this, _testSuite2, void 0);
+    __privateAdd(this, _failure, void 0);
+    __privateAdd(this, _error, void 0);
     __privateAdd(this, _yaml2, void 0);
     __privateAdd(this, _comment, void 0);
     __privateSet(this, _buffer, buffer);
     __privateSet(this, _fast, isFast);
     __privateSet(this, _timer, timer);
     __privateSet(this, _flush, flush);
-    __privateSet(this, _testSuite, testSuite);
-    __privateSet(this, _failure2, failure(sax2));
+    __privateSet(this, _testSuite2, testSuite);
+    __privateSet(this, _failure, failure(sax2));
+    __privateSet(this, _error, error(sax2));
     __privateSet(this, _yaml2, yaml(sax2));
     __privateSet(this, _comment, comment(sax2));
     __privateGet(this, _comment).testCase = this;
-    __privateGet(this, _testSuite).testCase = this;
+    __privateGet(this, _testSuite2).testCase = this;
   }
   get empty() {
     return __privateGet(this, _cases).length === 0;
@@ -309,12 +359,12 @@ var TestCaseObserver = class extends Observer_default {
   onOpen({ name, attributes, isSelfClosing }) {
     __privateGet(this, _cases).push({ name, attributes, isSelfClosing });
     if (isSelfClosing)
-      __privateGet(this, _testSuite).testPassed();
+      __privateGet(this, _testSuite2).testPassed();
   }
   onClose() {
     const { attributes, isSelfClosing } = __privateGet(this, _cases).pop();
-    if (!isSelfClosing && !__privateGet(this, _failure2).empty) {
-      __privateGet(this, _testSuite).testFailed();
+    if (!isSelfClosing && !(__privateGet(this, _failure).empty && __privateGet(this, _error).empty)) {
+      __privateGet(this, _testSuite2).testFailed();
     }
     const title = attributes.name;
     if ("time" in attributes) {
@@ -326,11 +376,13 @@ var TestCaseObserver = class extends Observer_default {
     const yaml2 = __privateGet(this, _yaml2).values;
     if (!__privateGet(this, _comment).empty)
       yaml2.comments = __privateGet(this, _comment).values;
-    if (!__privateGet(this, _failure2).empty)
-      yaml2.failures = __privateGet(this, _failure2).attributes;
+    if (!__privateGet(this, _failure).empty)
+      yaml2.failures = __privateGet(this, _failure).attributes;
+    if (!__privateGet(this, _error).empty)
+      yaml2.errors = __privateGet(this, _error).attributes;
     __privateGet(this, _buffer).push(test(title, {
-      index: __privateGet(this, _testSuite).testIndex(),
-      passed: __privateGet(this, _failure2).empty
+      index: __privateGet(this, _testSuite2).testIndex(),
+      passed: __privateGet(this, _failure).empty && __privateGet(this, _error).empty
     }));
     if (Object.keys(yaml2).length > 0) {
       __privateGet(this, _buffer).push(
@@ -340,7 +392,9 @@ var TestCaseObserver = class extends Observer_default {
       );
     }
     __privateGet(this, _comment).flush();
-    __privateGet(this, _failure2).flush();
+    __privateGet(this, _failure).flush();
+    __privateGet(this, _error).flush();
+    __privateGet(this, _yaml2).flush();
     if (__privateGet(this, _timer).ms > 0) {
       __privateGet(this, _timer).consume();
       __privateGet(this, _flush).call(this);
@@ -357,15 +411,16 @@ _buffer = new WeakMap();
 _fast = new WeakMap();
 _timer = new WeakMap();
 _flush = new WeakMap();
-_testSuite = new WeakMap();
-_failure2 = new WeakMap();
+_testSuite2 = new WeakMap();
+_failure = new WeakMap();
+_error = new WeakMap();
 _yaml2 = new WeakMap();
 _comment = new WeakMap();
 var TestCaseObserver_default = TestCaseObserver;
 
 // src/xml/TestSuiteObserver.js
 import { finish, start } from "supertap";
-var _suites, _stats, _buffer2, _fast2, _timer2, _flush2, _comment2, _failure3, _testCase2, _yaml3, _initTapData, initTapData_fn;
+var _suites, _stats, _buffer2, _fast2, _timer2, _flush2, _comment2, _failure2, _error2, _testCase2, _yaml3, _initTapData, initTapData_fn;
 var TestSuiteObserver = class extends Observer_default {
   constructor(sax2, buffer, isFast, timer, flush) {
     super(sax2);
@@ -382,7 +437,8 @@ var TestSuiteObserver = class extends Observer_default {
     __privateAdd(this, _timer2, void 0);
     __privateAdd(this, _flush2, void 0);
     __privateAdd(this, _comment2, void 0);
-    __privateAdd(this, _failure3, void 0);
+    __privateAdd(this, _failure2, void 0);
+    __privateAdd(this, _error2, void 0);
     __privateAdd(this, _testCase2, void 0);
     __privateAdd(this, _yaml3, void 0);
     __privateSet(this, _buffer2, buffer);
@@ -390,7 +446,8 @@ var TestSuiteObserver = class extends Observer_default {
     __privateSet(this, _timer2, timer);
     __privateSet(this, _flush2, flush);
     __privateSet(this, _comment2, comment(sax2));
-    __privateSet(this, _failure3, failure(sax2));
+    __privateSet(this, _failure2, failure(sax2));
+    __privateSet(this, _error2, error(sax2));
     __privateSet(this, _yaml3, yaml(sax2));
   }
   set testCase(value) {
@@ -430,7 +487,8 @@ _fast2 = new WeakMap();
 _timer2 = new WeakMap();
 _flush2 = new WeakMap();
 _comment2 = new WeakMap();
-_failure3 = new WeakMap();
+_failure2 = new WeakMap();
+_error2 = new WeakMap();
 _testCase2 = new WeakMap();
 _yaml3 = new WeakMap();
 _initTapData = new WeakSet();
@@ -447,7 +505,8 @@ initTapData_fn = function(testsuite) {
     start()
   );
   __privateGet(this, _testCase2).flush();
-  __privateGet(this, _failure3).flush();
+  __privateGet(this, _failure2).flush();
+  __privateGet(this, _error2).flush();
   __privateGet(this, _comment2).flush();
   __privateGet(this, _yaml3).flush();
 };
@@ -508,45 +567,31 @@ wait_fn = function(ms, tap) {
 };
 var TestTimer_default = TestTimer;
 
-// src/xml/SkippedObserver.js
-var _testSuite2;
-var SkippedObserver = class extends Observer_default {
-  constructor(sax2, testSuite) {
-    super(sax2);
-    __privateAdd(this, _testSuite2, void 0);
-    __privateSet(this, _testSuite2, testSuite);
-  }
-  onOpen({ isSelfClosing }) {
-    if (isSelfClosing)
-      __privateGet(this, _testSuite2).testSkipped();
-  }
-};
-_testSuite2 = new WeakMap();
-var SkippedObserver_default = SkippedObserver;
-
 // src/transform.js
-var _sax, _tap, _buffer3, _testCase3, _testSuite3, _failure4, _skipped, _timer3, _fast3, _flush3, flush_fn;
+var _sax2, _tap, _buffer3, _testCase3, _testSuite3, _failure3, _error3, _skipped, _timer3, _fast3, _flush3, flush_fn;
 var JUnitTAPTransform = class extends Transform {
   constructor({ fast = false, scheduler: scheduler2, ...options }) {
     super(options);
     __privateAdd(this, _flush3);
-    __privateAdd(this, _sax, new sax.SAXParser(true));
+    __privateAdd(this, _sax2, new SaxWrapper_default());
     __privateAdd(this, _tap, "");
     __privateAdd(this, _buffer3, []);
     __privateAdd(this, _testCase3, void 0);
     __privateAdd(this, _testSuite3, void 0);
-    __privateAdd(this, _failure4, void 0);
+    __privateAdd(this, _failure3, void 0);
+    __privateAdd(this, _error3, void 0);
     __privateAdd(this, _skipped, void 0);
     __privateAdd(this, _timer3, void 0);
     __privateAdd(this, _fast3, false);
-    saxParser(__privateGet(this, _sax));
+    saxParser(__privateGet(this, _sax2));
     __privateSet(this, _fast3, fast);
     __privateSet(this, _timer3, new TestTimer_default(scheduler2, this.push.bind(this)));
-    __privateSet(this, _testSuite3, new TestSuiteObserver_default(__privateGet(this, _sax), __privateGet(this, _buffer3), __privateGet(this, _fast3), __privateGet(this, _timer3), __privateMethod(this, _flush3, flush_fn).bind(this)));
-    __privateSet(this, _testCase3, new TestCaseObserver_default(__privateGet(this, _sax), __privateGet(this, _buffer3), __privateGet(this, _fast3), __privateGet(this, _timer3), __privateMethod(this, _flush3, flush_fn).bind(this), __privateGet(this, _testSuite3)));
-    __privateSet(this, _failure4, failure(__privateGet(this, _sax)));
-    __privateSet(this, _skipped, new SkippedObserver_default(__privateGet(this, _sax), __privateGet(this, _testSuite3)));
-    __privateGet(this, _sax).onopentag = (tag) => {
+    __privateSet(this, _testSuite3, new TestSuiteObserver_default(__privateGet(this, _sax2), __privateGet(this, _buffer3), __privateGet(this, _fast3), __privateGet(this, _timer3), __privateMethod(this, _flush3, flush_fn).bind(this)));
+    __privateSet(this, _testCase3, new TestCaseObserver_default(__privateGet(this, _sax2), __privateGet(this, _buffer3), __privateGet(this, _fast3), __privateGet(this, _timer3), __privateMethod(this, _flush3, flush_fn).bind(this), __privateGet(this, _testSuite3)));
+    __privateSet(this, _failure3, failure(__privateGet(this, _sax2)));
+    __privateSet(this, _error3, error(__privateGet(this, _sax2)));
+    __privateSet(this, _skipped, new SkippedObserver_default(__privateGet(this, _sax2), __privateGet(this, _testSuite3)));
+    __privateGet(this, _sax2).onopentag = (tag) => {
       switch (tag.name) {
         case "testsuite":
           __privateGet(this, _testSuite3).onOpen(tag);
@@ -555,14 +600,17 @@ var JUnitTAPTransform = class extends Transform {
           __privateGet(this, _testCase3).onOpen(tag);
           break;
         case "failure":
-          __privateGet(this, _failure4).onOpen(tag);
+          __privateGet(this, _failure3).onOpen(tag);
+          break;
+        case "error":
+          __privateGet(this, _error3).onOpen(tag);
           break;
         case "skipped":
           __privateGet(this, _skipped).onOpen(tag);
           break;
       }
     };
-    __privateGet(this, _sax).onclosetag = (tag) => {
+    __privateGet(this, _sax2).onclosetag = (tag) => {
       switch (tag) {
         case "testcase":
           __privateGet(this, _testCase3).onClose(tag);
@@ -571,25 +619,29 @@ var JUnitTAPTransform = class extends Transform {
           __privateGet(this, _testSuite3).onClose(tag);
           break;
         case "failure":
-          __privateGet(this, _failure4).onClose(tag);
+          __privateGet(this, _failure3).onClose(tag);
+          break;
+        case "error":
+          __privateGet(this, _error3).onClose(tag);
           break;
       }
     };
   }
   _transform(chunk, encoding, next) {
-    __privateGet(this, _sax).write(chunk, encoding);
+    __privateGet(this, _sax2).write(chunk, encoding);
     next();
   }
   _flush(next) {
     __privateGet(this, _timer3).flush(next);
   }
 };
-_sax = new WeakMap();
+_sax2 = new WeakMap();
 _tap = new WeakMap();
 _buffer3 = new WeakMap();
 _testCase3 = new WeakMap();
 _testSuite3 = new WeakMap();
-_failure4 = new WeakMap();
+_failure3 = new WeakMap();
+_error3 = new WeakMap();
 _skipped = new WeakMap();
 _timer3 = new WeakMap();
 _fast3 = new WeakMap();

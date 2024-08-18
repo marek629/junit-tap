@@ -1,7 +1,7 @@
 import { finish, start } from 'supertap'
 
 import Observer from './Observer.js'
-import { comment, failure, yaml } from '../loader.js'
+import { comment, error, failure, yaml } from '../loader.js'
 
 class TestSuiteObserver extends Observer {
   #suites = []
@@ -18,6 +18,7 @@ class TestSuiteObserver extends Observer {
 
   #comment
   #failure
+  #error
   #testCase
   #yaml
 
@@ -29,6 +30,7 @@ class TestSuiteObserver extends Observer {
     this.#flush = flush
     this.#comment = comment(sax)
     this.#failure = failure(sax)
+    this.#error = error(sax)
     this.#yaml = yaml(sax)
   }
 
@@ -71,6 +73,7 @@ class TestSuiteObserver extends Observer {
     )
     this.#testCase.flush()
     this.#failure.flush()
+    this.#error.flush()
     this.#comment.flush()
     this.#yaml.flush()
   }

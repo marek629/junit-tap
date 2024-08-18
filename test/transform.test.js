@@ -156,6 +156,34 @@ for (const [file, ...data] of [
     '# pass 3',
     '# fail 0',
   ],
+  [
+    'breakdown.xml',
+    '# Subtest: failures collected from other files',
+    'not ok 1 - /tmp/gource/test/args.test.js',
+    'not ok 2 - testTwo',
+    'not ok 3 - should produce TAP stream in tap.junit.xml',
+    '1..3',
+    '# tests 3',
+    '# pass 0',
+    '# fail 3',
+    '# Subtest: failures converted to errors',
+    'not ok 1 - /tmp/gource/test/args.test.js',
+    'not ok 2 - testTwo',
+    'not ok 3 - should produce TAP stream in tap.junit.xml',
+    '1..3',
+    '# tests 3',
+    '# pass 0',
+    '# fail 3',
+    '# Subtest: mixed variations',
+    'not ok 1 - /tmp/gource/test/args.test.js',
+    'not ok 2 - testTwo',
+    'ok 3 - should produce TAP stream in tap.junit.xml # SKIP',
+    '1..3',
+    '# tests 3',
+    '# pass 0',
+    '# skip 1',
+    '# fail 2',
+  ]
 ]) {
   for (const fast of [true, false]) {
     test(
@@ -242,6 +270,119 @@ test(yamlMacro, 'node.gource.xml',
       },
     ],
   },
+)
+test(yamlMacro, 'breakdown.xml',
+  // failures collected from other files
+  {
+    duration_ms: 53.620000000000005,
+    failures: [
+      {
+        message: 'test failed',
+        type: 'testCodeFailure',
+        text: "\n[Error: test failed] { code: 'ERR_TEST_FAILURE', failureType: 'testCodeFailure', cause: 'test failed', exitCode: 1, signal: null }",
+      },
+    ],
+  },
+  {
+    duration_ms: 8,
+    comments: [
+      `org.opentest4j.AssertionFailedError: expected: <true>but was: <false>at 
+                org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)...`,
+    ],
+    failures: [
+      {
+        message: 'expected: <true> but was: <false>',
+        type: 'org.opentest4j.AssertionFailedError',
+      },
+    ],
+  },
+  {
+    failures: [
+      {
+        message: `Expected "# skipped 1" in """
+TAP version 13
+not ok 1 - test is equal in undefineds
+not ok 2 - test skip extra # SKIP in undefineds
+not ok 3 - should not be equal in undefineds
+not ok 4 - should be equal in undefineds
+
+1..4
+# tests 4
+# pass 3
+# fail 1
+            """`,
+        type: 'fail',
+      },
+    ],
+  },
+  // failures converted to errors
+  {
+    duration_ms: 53.620000000000005,
+    errors: [
+      {
+        message: 'test failed',
+        type: 'testCodeError',
+        text: "\n[Error: test failed] { code: 'ERR_TEST_ERROR', errorType: 'testCodeError', cause: 'test failed', exitCode: 1, signal: null }",
+      },
+    ],
+  },
+  {
+    duration_ms: 8,
+    comments: [
+      `org.opentest4j.AssertionFailedError: expected: <true>but was: <false>at 
+                org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)...`,
+    ],
+    errors: [
+      {
+        message: 'expected: <true> but was: <false>',
+        type: 'org.opentest4j.AssertionFailedError',
+      },
+    ],
+  },
+  {
+    errors: [
+      {
+        message: `Expected "# skipped 1" in """
+TAP version 13
+not ok 1 - test is equal in undefineds
+not ok 2 - test skip extra # SKIP in undefineds
+not ok 3 - should not be equal in undefineds
+not ok 4 - should be equal in undefineds
+
+1..4
+# tests 4
+# pass 3
+# fail 1
+            """`,
+        type: 'fail',
+      },
+    ],
+  },
+  // mixed variations
+  {
+    duration_ms: 53.620000000000005,
+    errors: [
+      {
+        message: 'test failed',
+        type: 'testCodeError',
+        text: "\n[Error: test failed] { code: 'ERR_TEST_ERROR', errorType: 'testCodeError', cause: 'test failed', exitCode: 1, signal: null }",
+      },
+    ],
+  },
+  {
+    duration_ms: 12,
+    comments: [
+      `org.opentest4j.AssertionFailedError: expected: <true>but was: <false>at 
+                org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)...`,
+    ],
+    failures: [
+      {
+        message: 'expected: <true> but was: <false>',
+        type: 'org.opentest4j.AssertionFailedError',
+      },
+    ],
+  },
+  null,
 )
 
 const timeMacro = test.macro({

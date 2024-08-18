@@ -1,21 +1,21 @@
 import { EOL } from 'os'
 import { Transform } from 'stream'
 
-import sax from 'sax'
-
+import SaxWrapper from './xml/SaxWrapper.js'
+import SkippedObserver from './xml/SkippedObserver.js'
 import TestCaseObserver from './xml/TestCaseObserver.js'
 import TestSuiteObserver from './xml/TestSuiteObserver.js'
-import { failure, saxParser } from './loader.js'
+import { error, failure, saxParser } from './loader.js'
 import TestTimer from './TestTimer.js'
-import SkippedObserver from './xml/SkippedObserver.js'
 
 class JUnitTAPTransform extends Transform {
-  #sax = new sax.SAXParser(true)
+  #sax = new SaxWrapper
   #tap = ''
   #buffer = []
   #testCase
   #testSuite
   #failure
+  #error
   #skipped
   #timer
   #fast = false
@@ -29,6 +29,7 @@ class JUnitTAPTransform extends Transform {
     this.#testSuite = new TestSuiteObserver(this.#sax, this.#buffer, this.#fast, this.#timer, this.#flush.bind(this))
     this.#testCase = new TestCaseObserver(this.#sax, this.#buffer, this.#fast, this.#timer, this.#flush.bind(this), this.#testSuite)
     this.#failure = failure(this.#sax)
+    this.#error = error(this.#sax)
     this.#skipped = new SkippedObserver(this.#sax, this.#testSuite)
 
     this.#sax.onopentag = tag => {
@@ -41,6 +42,9 @@ class JUnitTAPTransform extends Transform {
           break
         case 'failure':
           this.#failure.onOpen(tag)
+          break
+        case 'error':
+          this.#error.onOpen(tag)
           break
         case 'skipped':
           this.#skipped.onOpen(tag)
@@ -57,6 +61,9 @@ class JUnitTAPTransform extends Transform {
           break
         case 'failure':
           this.#failure.onClose(tag)
+          break
+        case 'error':
+          this.#error.onClose(tag)
           break
       }
     }
