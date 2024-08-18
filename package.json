@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "dirname-filename-esm": "^1.1.1",
+    "ramda": "^0.30.1",
     "sax": "^1.3.0",
     "supertap": "^3.0.1",
     "yaml": "^2.4.1",
@@ -39,6 +40,6 @@
     "demo": "node dist/cli.js < test/data/time.xml | tap-merge",
     "demo:fast": "node dist/cli.js --fast < test/data/time.xml  | tap-merge",
     "test": "ava --tap",
-    "test:watch": "ava --watch"
+    "test:watch": "ava --watch --fail-fast"
   }
 }

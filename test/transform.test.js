@@ -199,6 +199,7 @@ const yamlMacro = test.macro({
         stop + 2,
       ).replace(/\n  /g, '\n')
       start = stop + end.length
+      if (yaml.__skip === true) continue
       t.deepEqual(parse(str), yaml)
     }
   },
@@ -223,6 +224,21 @@ test(yamlMacro, 'legacy.java.xml',
       {
         message: 'expected: <true> but was: <false>',
         type: 'org.opentest4j.AssertionFailedError',
+      },
+    ],
+  },
+)
+test(yamlMacro, 'node.gource.xml',
+  // skipping passing items having duration_ms only
+  ...Array(14).fill({ __skip: true }),
+  // important is only the last one
+  {
+    duration_ms: 53.620000000000005,
+    failures: [
+      {
+        message: 'test failed',
+        type: 'testCodeFailure',
+        text: "\n[Error: test failed] { code: 'ERR_TEST_FAILURE', failureType: 'testCodeFailure', cause: 'test failed', exitCode: 1, signal: null }",
       },
     ],
   },
@@ -255,5 +271,6 @@ test.serial(timeMacro, 'legacy.java.xml', 40, 8, 28)
 test.serial(timeMacro, 'node.gource.xml',
   4.68, 1.24, 1.34,
   1.17, 1.14, 1.12, 1.10, 1.10, 1.14, 1.15, 1.08, 0.99, 0.97, 0.95, 0.94, 0,
+  53.62,
 )
 test.serial(timeMacro, 'time.xml', 100, 30, 0, 9996, 5003, 2, 2)
