@@ -77,6 +77,11 @@ var package_default = {
     "demo:fast": "node dist/cli.js --fast < test/data/time.xml  | tap-merge",
     test: "ava --tap",
     "test:watch": "ava --watch --fail-fast"
+  },
+  ava: {
+    files: [
+      "test/**/*.test.js"
+    ]
   }
 };
 
