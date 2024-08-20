@@ -1,7 +1,6 @@
 import CommentObserver from './xml/CommentObserver.js'
 import ErrorObserver from './xml/ErrorObserver.js'
 import FailureObserver from './xml/FailureObserver.js'
-import TextObserver from './xml/TextObserver.js'
 import YamlObserver from './xml/YamlObserver.js'
 
 const scope = {}

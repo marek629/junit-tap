@@ -4,6 +4,11 @@ import { stringify } from 'yaml'
 import { comment, error, failure, yaml } from '../loader.js'
 import Observer from './Observer.js'
 
+export const external = {
+  stringify,
+  test,
+}
+
 class TestCaseObserver extends Observer {
   #cases = []
   #buffer = []
@@ -45,8 +50,8 @@ class TestCaseObserver extends Observer {
     if (!isSelfClosing && !(this.#failure.empty && this.#error.empty)) {
       this.#testSuite.testFailed()
     }
-    const title = attributes.name
-    if ('time' in attributes) {
+    const title = attributes?.name ?? ''
+    if (attributes && 'time' in attributes) {
       this.#yaml.duration_ms = attributes.time * 1000
       if (!this.#fast) {
         this.#timer.ms = this.#yaml.duration_ms
@@ -56,6 +61,7 @@ class TestCaseObserver extends Observer {
     if (!this.#comment.empty) yaml.comments = this.#comment.values
     if (!this.#failure.empty) yaml.failures = this.#failure.attributes
     if (!this.#error.empty) yaml.errors = this.#error.attributes
+    const { stringify, test } = external
     this.#buffer.push(test(title, {
       index: this.#testSuite.testIndex(),
       passed: this.#failure.empty && this.#error.empty,

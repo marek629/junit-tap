@@ -3,7 +3,7 @@ import { clone } from 'ramda'
 import Observer from './Observer.js'
 
 class YamlObserver extends Observer {
-  #yaml = []
+  #yaml = {}
 
   constructor (sax) {
     super(sax)
