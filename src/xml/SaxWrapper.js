@@ -10,22 +10,13 @@ class SaxWrapper extends EventEmitter {
   constructor () {
     super()
     this.#sax.ontext = text => this.emit('text', text)
+    this.#sax.onopentag = tag => this.emit('tagOpen', tag)
+    this.#sax.onclosetag = tag => this.emit('tagClose', tag)
+    this.#sax.oncdata = data => this.emit('cdata', data)
   }
 
   get uuid () {
     return this.#uuid
-  }
-
-  set onopentag (cb) {
-    this.#sax.onopentag = cb
-  }
-
-  set onclosetag (cb) {
-    this.#sax.onclosetag = cb
-  }
-
-  set oncdata (cb) {
-    this.#sax.oncdata = cb
   }
 
   write (chunk, encoding) {

@@ -2,14 +2,16 @@ import { test } from 'supertap'
 import { stringify } from 'yaml'
 
 import { comment, error, failure, yaml } from '../loader.js'
-import Observer from './Observer.js'
+import TagObserver from './TagObserver.js'
 
 export const external = {
   stringify,
   test,
 }
 
-class TestCaseObserver extends Observer {
+class TestCaseObserver extends TagObserver {
+  _tag = 'testcase'
+
   #cases = []
   #buffer = []
   #fast = false
@@ -22,7 +24,7 @@ class TestCaseObserver extends Observer {
   #comment
 
   constructor (sax, buffer, isFast, timer, flush, testSuite) {
-    super(sax)
+    super(sax, true)
     this.#buffer = buffer
     this.#fast = isFast
     this.#timer = timer
@@ -41,11 +43,13 @@ class TestCaseObserver extends Observer {
   }
 
   onOpen ({ name, attributes, isSelfClosing }) {
+    if (!this._check(name)) return
     this.#cases.push({ name, attributes, isSelfClosing })
     if (isSelfClosing) this.#testSuite.testPassed()
   }
 
-  onClose () {
+  onClose (name) {
+    if (!this._check(name)) return
     const { attributes, isSelfClosing } = this.#cases.pop()
     if (!isSelfClosing && !(this.#failure.empty && this.#error.empty)) {
       this.#testSuite.testFailed()

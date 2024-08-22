@@ -1,14 +1,17 @@
-import Observer from './Observer.js'
+import TagObserver from './TagObserver.js'
 
-class SkippedObserver extends Observer {
+class SkippedObserver extends TagObserver {
+  _tag = 'skipped'
+
   #testSuite
 
   constructor (sax, testSuite) {
-    super(sax)
+    super(sax, false)
     this.#testSuite = testSuite
   }
 
-  onOpen ({ isSelfClosing }) {
+  onOpen ({ isSelfClosing, name }) {
+    if (!this._check(name)) return
     if (isSelfClosing) this.#testSuite.testSkipped()
   }
 }

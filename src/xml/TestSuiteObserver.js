@@ -1,9 +1,11 @@
 import { finish, start } from 'supertap'
 
-import Observer from './Observer.js'
 import { comment, error, failure, yaml } from '../loader.js'
+import TagObserver from './TagObserver.js'
 
-class TestSuiteObserver extends Observer {
+class TestSuiteObserver extends TagObserver {
+  _tag = 'testsuite'
+
   #suites = []
   #stats = {
     index: 0,
@@ -23,7 +25,7 @@ class TestSuiteObserver extends Observer {
   #yaml
 
   constructor (sax, buffer, isFast, timer, flush) {
-    super(sax)
+    super(sax, true)
     this.#buffer = buffer
     this.#fast = isFast
     this.#timer = timer
@@ -54,7 +56,8 @@ class TestSuiteObserver extends Observer {
     this.#stats.failed++
   }
 
-  onOpen ({ attributes, isSelfClosing }) {
+  onOpen ({ attributes, isSelfClosing, name }) {
+    if (!this._check(name)) return
     this.#suites.push({ attributes, isSelfClosing })
     if (!isSelfClosing) this.#initTapData(attributes?.name ?? '')
   }
@@ -78,7 +81,8 @@ class TestSuiteObserver extends Observer {
     this.#yaml.flush()
   }
 
-  onClose () {
+  onClose (name) {
+    if (!this._check(name)) return
     const { attributes } = this.#suites.pop()
     if (!this.#fast && 'time' in attributes) {
       this.#timer.ms = attributes.time * 1000

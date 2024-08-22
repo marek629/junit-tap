@@ -7,6 +7,8 @@ import TestCaseObserver from '../../src/xml/TestCaseObserver.js'
 import TestSuiteObserver from '../../src/xml/TestSuiteObserver.js'
 import { comment, error, failure, saxParser, yaml } from '../../src/loader.js'
 
+const tag = 'testsuite'
+
 const flushAllMacro = test.macro({
   exec: (t, attributes, expected) => {
     const sax = {uuid: randomUUID(), on: spy()}
@@ -16,7 +18,7 @@ const flushAllMacro = test.macro({
     const testCase = new TestCaseObserver(sax, null, true, null, null, testSuite)
     const spies = [...observers, testCase].map(o => spy(o, 'flush'))
 
-    testSuite.onOpen({ attributes, isSelfClosing: !expected })
+    testSuite.onOpen({ attributes, isSelfClosing: !expected, name: tag })
 
     t.is(spies.every(s => s.calledOnce), expected)
   },

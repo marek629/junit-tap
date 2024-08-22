@@ -31,14 +31,16 @@ const createTestCase = (sax, timer) => {
   return new TestCaseObserver(sax, buffer, true, timer, null, testSuite)
 }
 
+const tag = 'testcase'
+
 const flushAllMacro = test.macro({
   exec: (t, attributes, isSelfClosing) => {
     const { sax, observers } = t.context
     const testCase = createTestCase(sax, {ms: 0})
     const spies = observers.map(o => spy(o, 'flush'))
 
-    testCase.onOpen({ attributes, isSelfClosing })
-    testCase.onClose()
+    testCase.onOpen({ attributes, isSelfClosing, name: tag })
+    testCase.onClose(tag)
 
     t.true(spies.every(s => s.calledOnce))
   },
@@ -62,8 +64,8 @@ const isEmptyAllMacro = test.macro({
     const testCase = createTestCase(sax, {ms: 0})
     const spies = observers.filter(o => 'empty' in o).map(o => spy(o, 'empty', ['get']))
 
-    testCase.onOpen({ attributes, isSelfClosing })
-    testCase.onClose()
+    testCase.onOpen({ attributes, isSelfClosing, name: tag })
+    testCase.onClose(tag)
 
     t.true(spies.every(s => s.get.called))
   },
@@ -96,8 +98,8 @@ test('on close tag should set full yaml if all known observers are not empty', t
   })
   const stringify = spy(external, 'stringify')
 
-  testCase.onOpen({ attributes: { name: 'j' }, isSelfClosing: false })
-  testCase.onClose()
+  testCase.onOpen({ attributes: { name: 'j' }, isSelfClosing: false, name: tag })
+  testCase.onClose(tag)
 
   t.true(stringify.calledOnce)
   t.deepEqual(stringify.args[0][0], {
@@ -117,8 +119,8 @@ const testMacro = test.macro({
     const testSpy = spy(external, 'test')
 
     const name = 'j'
-    testCase.onOpen({ attributes: { name }, isSelfClosing: false })
-    testCase.onClose()
+    testCase.onOpen({ attributes: { name }, isSelfClosing: false, name: tag })
+    testCase.onClose(tag)
 
     t.true(testSpy.calledOnceWithExactly(name, { index: 1, passed }))
   },
@@ -136,6 +138,6 @@ for (const b1 of bools) {
 test('null timer should failing on close tag', t => {
   const { sax } = t.context
   const testCase = createTestCase(sax, null)
-  testCase.onOpen({})
+  testCase.onOpen({ name: tag })
   t.throws(testCase.onClose)
 })

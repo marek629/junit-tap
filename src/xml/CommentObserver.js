@@ -6,9 +6,9 @@ class CommentObserver extends Observer {
 
   constructor (sax) {
     super(sax)
-    this._sax.oncdata = data => {
+    this._sax.on('cdata', data => {
       if (!this.#testCase.empty) this.#comments.push(data)
-    }
+    })
   }
 
   set testCase (value) {
